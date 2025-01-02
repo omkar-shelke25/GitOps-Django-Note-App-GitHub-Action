@@ -1,7 +1,3 @@
-Here's a sample README file for your Jenkins CI pipeline project, including the importance of Dockerfile and Docker Compose file:
-
----
-
 # Jenkins CI Pipeline for Django App
 
 This project demonstrates the use of Jenkins for Continuous Integration (CI) with Docker for a Django application. The pipeline automates the process of building, testing, and deploying a Dockerized Django app.
