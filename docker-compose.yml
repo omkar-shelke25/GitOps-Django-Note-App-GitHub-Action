@@ -6,7 +6,7 @@ services:
     image: nginx
     container_name: "nginx_cont"
     ports:
-      - "80:80"
+      - "8085:8085"
     restart: always
     depends_on:
       - django_app
