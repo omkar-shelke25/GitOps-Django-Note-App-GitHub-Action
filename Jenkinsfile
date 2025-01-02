@@ -51,7 +51,7 @@ pipeline {
                         error "docker-compose.yml file not found!"
                     }
                 }
-                sh "docker-compose up -d"
+                sh "docker compose down && docker-compose up -d"
             }
         }
     }
