@@ -6,7 +6,7 @@ pipeline {
         stage("Checkout The Code") {
             steps {
                 script {
-                    // Replace with your shared library function
+                    
                     checkout_code("https://github.com/omkar-shelke25/Django-App-Pipeline-Jenkins", "main")
                 }
             }
@@ -15,7 +15,7 @@ pipeline {
         stage("Testing") {
             steps {
                 script {
-                    // Replace with your shared library function
+                   
                     hello()
                 }
             }
@@ -38,7 +38,7 @@ pipeline {
         stage("Store Image In Artifactory") {
             steps {
                 script {
-                    // Replace with your shared library function
+                   
                     docker_push("note-app", "latest")
                 }
             }
