@@ -22,13 +22,34 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Build and Save Docker Images
         run: |
-          docker build -t noteapp-nginx:latest ./nginx
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            -t noteapp-nginx:latest ./nginx \
+            --load
           docker save noteapp-nginx:latest -o noteapp-nginx.tar
 
-          docker build -t noteapp-backend:latest .
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            -t noteapp-backend:latest . \
+            --load
           docker save noteapp-backend:latest -o noteapp-backend.tar
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Upload Docker Images as Artifacts
         uses: actions/upload-artifact@v4
