@@ -1,30 +1,40 @@
 name: noteapp-gitops-pipelines
 
-# Controls when the workflow will run
 on:
   push:
     branches:
       - main
-      - 'feature/**'  # Matches any branch starting with feature/
+      - 'feature/**'
   pull_request:
     branches:
       - main
     types:
-      - closed  # For merge request events
+      - closed
 
 jobs:
-  docker-build:
+  docker-build-and-artifact:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code 
         uses: actions/checkout@v3
-      - name: Run Docker Build Commands
-        run: echo "docker build"
-  
-  docker-test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Docker Image Testing
-        uses: actions/checkout@v3
-      - run: echo "run Executed without Name"
-      - run: ls
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Save Docker Images
+        run: |
+          docker build -t noteapp-nginx:latest ./nginx
+          docker save noteapp-nginx:latest -o noteapp-frontend.tar
+
+          docker build -t noteapp-backend:latest .
+          docker save noteapp-backend:latest -o noteapp-backend.tar
+
+      - name: Upload All Docker Images as Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: |
+            noteapp-nginx.tar
+            noteapp-backend.tar
+        
