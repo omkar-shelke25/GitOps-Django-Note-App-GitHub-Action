@@ -71,8 +71,15 @@ jobs:
       - name: Update docker-compose.yaml with SHA Tags
         run: |
           GIT_SHA=${{ needs.docker-build-and-artifact.outputs.sha }}
-          sed -i "s|noteapp-nginx:.*|noteapp-nginx:$GIT_SHA|g" docker-compose.yml
-          sed -i "s|noteapp-backend:.*|noteapp-backend:$GIT_SHA|g" docker-compose.yml
+          sed -i "s|noteapp-nginx:latest*|noteapp-nginx:$GIT_SHA|g" docker-compose.yml
+          sed -i "s|noteapp-backend:latest*|noteapp-backend:$GIT_SHA|g" docker-compose.yml
 
-      - name: Run App with docker-compose
-        run: docker-compose up -d
+      - name: Install Docker Compose
+        run: |
+          mkdir -p ~/.docker/cli-plugins
+          curl -SL https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
+          chmod +x ~/.docker/cli-plugins/docker-compose
+          docker compose version
+
+      - name: Run App with Docker Compose
+        run: docker compose up -d
