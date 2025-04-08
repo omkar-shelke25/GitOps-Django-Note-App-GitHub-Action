@@ -2,11 +2,10 @@ version: "3.8"
 
 services:
   nginx:
-    build: ./nginx
-    image: nginx
+    image: noteapp-nginx:latest
     container_name: "nginx_cont"
     ports:
-      - "8085:8085"
+      - "80:80"
     restart: always
     depends_on:
       - django_app
@@ -14,13 +13,10 @@ services:
       - notes-app-nw
 
   django_app:
-    build:
-      context: .
-    image: django_app
+    image: noteapp-backend:latest
     container_name: "django_cont"
     ports:
       - "8000:8000"
-    command: sh -c "python manage.py migrate --noinput && gunicorn notesapp.wsgi --bind 0.0.0.0:8000"
     env_file:
       - ".env"
     depends_on:
