@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: omkara25/noteapp-nginx:latest
+          image: omkara25/noteapp-nginx:86fa11a
           ports:
             - containerPort: 80
           resources:
