@@ -1,0 +1,26 @@
+name: noteapp-gitops-pipelines
+
+# Controls when the workflow will run
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'  # Matches any branch starting with feature/
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed  # For merge request events
+
+jobs:
+  docker-build:
+    runs-on: ubuntu:latest
+    steps:
+      - uses: actions/checkout@v3
+      - echo "docker build"
+  
+  docker-test:
+    runs-on:
+      - uses: actions/checkout@v3
+      - echo "docker test"
+      - ls
