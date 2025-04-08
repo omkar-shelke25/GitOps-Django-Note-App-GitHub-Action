@@ -16,12 +16,14 @@ jobs:
   docker-build:
     runs-on: ubuntu:latest
     steps:
-      - uses: actions/checkout@v3
-      - echo "docker build"
+      - name: Checkout code 
+        uses: actions/checkout@v3
+      - name: Run Docker Build Commands
+        run: echo "docker build"
   
   docker-test:
     runs-on: ubuntu:latest
     steps:
-      - uses: actions/checkout@v3
-      - echo "docker test"
-      - ls
+      - name: Docker Image Testing
+        uses: actions/checkout@v3
+      - run: echo "run Executed without Name"
