@@ -14,7 +14,7 @@ on:
 
 jobs:
   docker-build:
-    runs-on: ubuntu:latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code 
         uses: actions/checkout@v3
@@ -22,7 +22,7 @@ jobs:
         run: echo "docker build"
   
   docker-test:
-    runs-on: ubuntu:latest
+    runs-on: ubuntu-latest
     steps:
       - name: Docker Image Testing
         uses: actions/checkout@v3
