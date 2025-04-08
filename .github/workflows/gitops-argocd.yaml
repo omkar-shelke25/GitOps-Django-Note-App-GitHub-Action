@@ -20,7 +20,8 @@ jobs:
       - echo "docker build"
   
   docker-test:
-    runs-on:
+    runs-on: ubuntu:latest
+    steps:
       - uses: actions/checkout@v3
       - echo "docker test"
       - ls
