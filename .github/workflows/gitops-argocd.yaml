@@ -27,3 +27,4 @@ jobs:
       - name: Docker Image Testing
         uses: actions/checkout@v3
       - run: echo "run Executed without Name"
+      - run: ls
