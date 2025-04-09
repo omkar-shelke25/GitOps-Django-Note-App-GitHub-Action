@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   nginx:
     image: noteapp-nginx:latest
@@ -8,7 +6,7 @@ services:
       - "80:80"
     restart: always
     depends_on:
-      - django_app
+      - django-service  # Changed from django_app to match the service name
     networks:
       - notes-app-nw
 
