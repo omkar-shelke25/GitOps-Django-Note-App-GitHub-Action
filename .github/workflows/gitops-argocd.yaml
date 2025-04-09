@@ -151,7 +151,8 @@ jobs:
         run: |
           echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
           export KUBECONFIG=$(pwd)/kubeconfig.yaml
-
+          kubectl config use-context django-note-app-context
+          
       - name: Deploy ArgoCD Application for Staging
         run: |
           kubectl apply -f argocd/app-staging.yaml -n argocd
@@ -174,6 +175,7 @@ jobs:
         run: |
           echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
           export KUBECONFIG=$(pwd)/kubeconfig.yaml
+          kubectl config use-context django-note-app-context
 
       - name: Deploy ArgoCD Application for Production
         run: |
