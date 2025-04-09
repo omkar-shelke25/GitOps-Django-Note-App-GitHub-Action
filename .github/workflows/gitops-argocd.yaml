@@ -6,15 +6,17 @@ on:
       - main
       - 'feature/**'
     paths-ignore:
-      - 'base/kustomization.yaml'
+      - 'noteapp-kustomize/base/kustomization.yaml'
       - 'README.md'
+      - 'k8s-manifests-for-github-action/README.md'
   pull_request:
     branches:
       - main
     types: [closed]
     paths-ignore:
-      - 'base/kustomization.yaml'
+      - 'noteapp-kustomize/base/kustomization.yaml'
       - 'README.md'
+      - 'k8s-manifests-for-github-action/README.md'
   workflow_dispatch:  # For manual production deploy
 
 jobs:
@@ -41,7 +43,6 @@ jobs:
             --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
             -t noteapp-nginx:latest ./nginx --load
           docker save noteapp-nginx:latest -o noteapp-nginx.tar
-
           docker buildx build --cache-from type=local,src=/tmp/.buildx-cache \
             --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
             -t noteapp-backend:latest . --load
@@ -149,10 +150,14 @@ jobs:
 
       - name: Configure Kubeconfig
         run: |
-          echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
-          export KUBECONFIG=$(pwd)/kubeconfig.yaml
+          # Ensure the default ~/.kube/config is overridden by writing the secret to a file
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+          # Explicitly set the context to avoid any ambiguity
           kubectl config use-context django-note-app-context
-          
+          # Verify the cluster connection
+          kubectl cluster-info
+
       - name: Deploy ArgoCD Application for Staging
         run: |
           kubectl apply -f argocd/app-staging.yaml -n argocd
@@ -173,9 +178,13 @@ jobs:
 
       - name: Configure Kubeconfig
         run: |
-          echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
-          export KUBECONFIG=$(pwd)/kubeconfig.yaml
+          # Ensure the default ~/.kube/config is overridden by writing the secret to a file
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+          # Explicitly set the context to avoid any ambiguity
           kubectl config use-context django-note-app-context
+          # Verify the cluster connection
+          kubectl cluster-info
 
       - name: Deploy ArgoCD Application for Production
         run: |
