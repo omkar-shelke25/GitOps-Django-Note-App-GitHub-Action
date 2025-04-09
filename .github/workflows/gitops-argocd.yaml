@@ -5,16 +5,19 @@ on:
     branches:
       - main
       - 'feature/**'
+    paths-ignore:
+      - 'base/kustomization.yaml'  # Updated path if in base/
   pull_request:
     branches:
       - main
     types:
       - closed
+    paths-ignore:
+      - 'base/kustomization.yaml'  # Updated path if in base/
 
 jobs:
   docker-build-and-run:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -85,7 +88,6 @@ jobs:
     environment:
       name: production
       url: https://hub.docker.com/
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -118,3 +120,40 @@ jobs:
           GIT_SHA=${{ steps.set_sha.outputs.sha }}
           docker push ${{ secrets.DOCKER_USERNAME }}/noteapp-nginx:$GIT_SHA
           docker push ${{ secrets.DOCKER_USERNAME }}/noteapp-backend:$GIT_SHA
+
+  update-kustomization:
+    runs-on: ubuntu-latest
+    needs: docker-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set short SHA
+        id: set_sha
+        run: echo "sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Install yq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget
+          wget https://github.com/mikefarah/yq/releases/download/v4.40.5/yq_linux_amd64 -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Update kustomization.yaml with new image tags
+        run: |
+          cd base  # Assuming kustomization.yaml is in base/
+          GIT_SHA=${{ steps.set_sha.outputs.sha }}
+          yq eval ".images[0].newTag = \"$GIT_SHA\"" -i kustomization.yaml
+          yq eval ".images[1].newTag = \"$GIT_SHA\"" -i kustomization.yaml
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "omkar-shelke25"
+          git config user.email "omkarshelke1125@gmail.com"
+          git add base/kustomization.yaml  # Updated path to match cd base
+          git commit -m "Update image tags to ${{ steps.set_sha.outputs.sha }}" || echo "No changes to commit"
+          git push  # No need to set remote URL; actions/checkout handles it
