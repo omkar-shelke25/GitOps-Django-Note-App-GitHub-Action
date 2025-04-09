@@ -6,16 +6,16 @@ on:
       - main
       - 'feature/**'
     paths-ignore:
-      - 'base/kustomization.yaml'  # Updated path if in base/
-      - 'READEME.md'
+      - 'base/kustomization.yaml'
+      - 'README.md'
   pull_request:
     branches:
       - main
-    types:
-      - closed
+    types: [closed]
     paths-ignore:
-      - 'base/kustomization.yaml'  # Updated path if in base/
-      - 'READEME.md'
+      - 'base/kustomization.yaml'
+      - 'README.md'
+  workflow_dispatch:  # For manual production deploy
 
 jobs:
   docker-build-and-run:
@@ -37,18 +37,14 @@ jobs:
 
       - name: Build and Save Docker Images
         run: |
-          docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache \
+          docker buildx build --cache-from type=local,src=/tmp/.buildx-cache \
             --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
-            -t noteapp-nginx:latest ./nginx \
-            --load
+            -t noteapp-nginx:latest ./nginx --load
           docker save noteapp-nginx:latest -o noteapp-nginx.tar
 
-          docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache \
+          docker buildx build --cache-from type=local,src=/tmp/.buildx-cache \
             --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
-            -t noteapp-backend:latest . \
-            --load
+            -t noteapp-backend:latest . --load
           docker save noteapp-backend:latest -o noteapp-backend.tar
 
       - name: Move cache
@@ -64,32 +60,10 @@ jobs:
             noteapp-nginx.tar
             noteapp-backend.tar
 
-      - name: Download Docker Artifacts (for test run)
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-images
-
-      - name: Load Docker Images
-        run: |
-          docker load -i noteapp-nginx.tar
-          docker load -i noteapp-backend.tar
-
-      - name: Install Docker Compose
-        run: |
-          mkdir -p ~/.docker/cli-plugins
-          curl -SL https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
-          chmod +x ~/.docker/cli-plugins/docker-compose
-          docker compose version
-
-      - name: Run App with Docker Compose
-        run: docker compose up -d
-
   docker-push:
     runs-on: ubuntu-latest
     needs: docker-build-and-run
-    environment:
-      name: production
-      url: https://hub.docker.com/
+    environment: production
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -143,11 +117,10 @@ jobs:
           sudo apt-get install -y wget
           wget https://github.com/mikefarah/yq/releases/download/v4.40.5/yq_linux_amd64 -O /usr/local/bin/yq
           chmod +x /usr/local/bin/yq
-          yq --version
 
-      - name: Update kustomization.yaml with new image tags
+      - name: Update base/kustomization.yaml with new image tags
         run: |
-          cd base  # Assuming kustomization.yaml is in base/
+          cd noteapp-kustomize/base
           GIT_SHA=${{ steps.set_sha.outputs.sha }}
           yq eval ".images[0].newTag = \"$GIT_SHA\"" -i kustomization.yaml
           yq eval ".images[1].newTag = \"$GIT_SHA\"" -i kustomization.yaml
@@ -156,6 +129,52 @@ jobs:
         run: |
           git config user.name "omkar-shelke25"
           git config user.email "omkarshelke1125@gmail.com"
-          git add base/kustomization.yaml  # Updated path to match cd base
+          git add noteapp-kustomize/base/kustomization.yaml
           git commit -m "Update image tags to ${{ steps.set_sha.outputs.sha }}" || echo "No changes to commit"
-          git push  # No need to set remote URL; actions/checkout handles it
+          git push
+
+  django-note-app-staging-deploy:
+    runs-on: ubuntu-latest
+    needs: [docker-build-and-run, docker-push, update-kustomization]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure Kubeconfig
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
+          export KUBECONFIG=$(pwd)/kubeconfig.yaml
+
+      - name: Deploy ArgoCD Application for Staging
+        run: |
+          kubectl apply -f argocd/app-staging.yaml -n argocd
+
+  django-note-app-production-deploy:
+    runs-on: ubuntu-latest
+    needs: [docker-build-and-run, docker-push, update-kustomization]
+    if: github.event_name == 'workflow_dispatch'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure Kubeconfig
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
+          export KUBECONFIG=$(pwd)/kubeconfig.yaml
+
+      - name: Deploy ArgoCD Application for Production
+        run: |
+          kubectl apply -f argocd/app-production.yaml -n argocd
