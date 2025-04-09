@@ -12,7 +12,7 @@ services:
     networks:
       - notes-app-nw
 
-  django_app:
+  django-service:
     image: noteapp-backend:latest
     container_name: "django_cont"
     ports:
