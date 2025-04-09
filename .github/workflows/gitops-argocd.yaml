@@ -155,8 +155,6 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
           # Explicitly set the context to avoid any ambiguity
           kubectl config use-context django-note-app-context
-          # Verify the cluster connection
-          kubectl cluster-info
 
       - name: Deploy ArgoCD Application for Staging
         run: |
@@ -183,8 +181,6 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
           # Explicitly set the context to avoid any ambiguity
           kubectl config use-context django-note-app-context
-          # Verify the cluster connection
-          kubectl cluster-info
 
       - name: Deploy ArgoCD Application for Production
         run: |
