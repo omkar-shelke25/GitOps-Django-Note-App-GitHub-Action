@@ -57,7 +57,7 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "18.31.0"
 
-  cluster_name    = "tic-toe-tac-app"
+  cluster_name    = "Note-app"
   cluster_version = "1.28"
 
   vpc_id     = data.aws_vpc.default.id
