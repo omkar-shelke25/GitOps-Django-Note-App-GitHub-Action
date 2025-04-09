@@ -7,3 +7,4 @@ resources:
   - django-note-app-role.yaml
   - django-note-app-rb.yaml
   - django-note-app-secret.yaml
+  - argodcd-namespace-access-django-user.yaml
