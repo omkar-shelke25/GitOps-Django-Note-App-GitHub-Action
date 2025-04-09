@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/omkar-shelke25/GitOps-Django-Note-App-GitHub-Action
     targetRevision: HEAD
-    path: overlays/staging
+    path: noteapp-kustomize/overlays/staging
   destination:
     server: https://kubernetes.default.svc
     namespace: staging
