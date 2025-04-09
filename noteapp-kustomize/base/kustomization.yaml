@@ -11,7 +11,7 @@ resources:
 images:
   - name: omkara25/noteapp-nginx
     newName: omkara25/noteapp-nginx
-    newTag: d0ddf52
+    newTag: 3512f2f
   - name: omkara25/noteapp-backend
     newName: omkara25/noteapp-backend
-    newTag: d0ddf52
+    newTag: 3512f2f
