@@ -1,4 +1,3 @@
-# kustomization.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -9,3 +8,10 @@ resources:
   - django-deployment.yaml
   - db-service.yaml
   - db-deployment.yaml
+images:
+  - name: omkara25/noteapp-nginx
+    newName: omkara25/noteapp-nginx
+    newTag: latest
+  - name: omkara25/noteapp-backend
+    newName: omkara25/noteapp-backend
+    newTag: latest
