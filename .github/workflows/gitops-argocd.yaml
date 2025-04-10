@@ -20,7 +20,7 @@ on:
   workflow_dispatch:  # For manual production deploy
 
 jobs:
-  docker-build-and-run:
+  docker-build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -61,9 +61,70 @@ jobs:
             noteapp-nginx.tar
             noteapp-backend.tar
 
+  smoke-test:
+    runs-on: ubuntu-latest
+    needs: docker-build  # Updated from docker-build-and-run
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install docker-compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+
+      - name: Download Docker Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+
+      - name: Load Docker Images
+        run: |
+          docker load -i noteapp-nginx.tar
+          docker load -i noteapp-backend.tar
+
+      - name: Create .env file for Django
+        run: |
+          echo "DATABASE_HOST=db" > .env
+          echo "DATABASE_NAME=test_db" >> .env
+          echo "DATABASE_USER=root" >> .env
+          echo "DATABASE_PASSWORD=root" >> .env
+          echo "DATABASE_PORT=3306" >> .env
+
+      - name: Start services with docker-compose
+        run: |
+          docker-compose -f docker-compose.yaml up -d
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for MySQL to be healthy..."
+          until docker inspect --format='{{.State.Health.Status}}' db_cont | grep -q "healthy"; do
+            sleep 5
+            echo "MySQL not healthy yet..."
+          done
+          echo "MySQL is healthy!"
+
+          echo "Waiting for Django to be healthy..."
+          until docker inspect --format='{{.State.Health.Status}}' django_cont | grep -q "healthy"; do
+            sleep 5
+            echo "Django not healthy yet..."
+          done
+          echo "Django is healthy!"
+
+      - name: Run smoke test
+        run: |
+          echo "Running smoke test..."
+          curl --retry 5 --retry-delay 5 --retry-max-time 60 http://localhost:80 || exit 1
+          echo "Smoke test passed!"
+
+      - name: Tear down services
+        run: |
+          docker-compose -f docker-compose.yaml down --volumes
+
   docker-push:
     runs-on: ubuntu-latest
-    needs: docker-build-and-run
+    needs: smoke-test
     environment: production
     steps:
       - name: Checkout code
@@ -136,7 +197,7 @@ jobs:
 
   django-note-app-staging-deploy:
     runs-on: ubuntu-latest
-    needs: [docker-build-and-run, docker-push, update-kustomization]
+    needs: [docker-build, docker-push, update-kustomization]  # Updated from docker-build-and-run
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: staging
     steps:
@@ -150,10 +211,8 @@ jobs:
 
       - name: Configure Kubeconfig
         run: |
-          # Ensure the default ~/.kube/config is overridden by writing the secret to a file
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
-          # Explicitly set the context to avoid any ambiguity
           kubectl config use-context django-note-app-context
 
       - name: Deploy ArgoCD Application for Staging
@@ -162,7 +221,7 @@ jobs:
 
   django-note-app-production-deploy:
     runs-on: ubuntu-latest
-    needs: [docker-build-and-run, docker-push, update-kustomization]
+    needs: [docker-build, docker-push, update-kustomization]  # Updated from docker-build-and-run
     if: github.event_name == 'workflow_dispatch'
     environment: production
     steps:
@@ -176,10 +235,8 @@ jobs:
 
       - name: Configure Kubeconfig
         run: |
-          # Ensure the default ~/.kube/config is overridden by writing the secret to a file
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
-          # Explicitly set the context to avoid any ambiguity
           kubectl config use-context django-note-app-context
 
       - name: Deploy ArgoCD Application for Production
