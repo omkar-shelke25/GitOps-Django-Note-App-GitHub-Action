@@ -25,14 +25,13 @@ jobs:
     steps:
       - name: Debug Event
         run: |
-          echo "Running docker-build for event: ${{ github.event_name }}"
+          echo "Event: ${{ github.event_name }}"
           echo "Ref: ${{ github.ref }}"
+          echo "SHA: ${{ github.sha }}"
       - name: Checkout code
         uses: actions/checkout@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Cache Docker layers
         uses: actions/cache@v3
         with:
@@ -40,7 +39,6 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
-
       - name: Build and Save Docker Images
         run: |
           docker buildx build --cache-from type=local,src=/tmp/.buildx-cache \
@@ -51,12 +49,10 @@ jobs:
             --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
             -t noteapp-backend:latest . --load
           docker save noteapp-backend:latest -o noteapp-backend.tar
-
       - name: Move cache
         run: |
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
       - name: Upload Docker Images as Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -71,27 +67,22 @@ jobs:
     steps:
       - name: Debug Event
         run: |
-          echo "Running smoke-test for event: ${{ github.event_name }}"
+          echo "Event: ${{ github.event_name }}"
           echo "Ref: ${{ github.ref }}"
       - name: Checkout code
         uses: actions/checkout@v3
-
       - name: Install docker-compose
         run: |
           sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
-
       - name: Download Docker Artifacts
         uses: actions/download-artifact@v4
         with:
           name: docker-images
-
       - name: Load Docker Images
         run: |
           docker load -i noteapp-nginx.tar
           docker load -i noteapp-backend.tar
-
       - name: Create .env file for Django
         run: |
           echo "DATABASE_HOST=db" > .env
@@ -99,11 +90,9 @@ jobs:
           echo "DATABASE_USER=root" >> .env
           echo "DATABASE_PASSWORD=root" >> .env
           echo "DATABASE_PORT=3306" >> .env
-
       - name: Start services with docker-compose
         run: |
           docker-compose -f docker-compose.yml up -d  
-
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for MySQL to be healthy..."
@@ -112,20 +101,16 @@ jobs:
             echo "MySQL not healthy yet..."
           done
           echo "MySQL is healthy!"
-
           echo "Waiting for Django to be healthy..."
           until docker inspect --format='{{.State.Health.Status}}' django_cont | grep -q "healthy"; do
             sleep 5
             echo "Django not healthy yet..."
           done
           echo "Django is healthy!"
-
       - name: Run smoke test
         run: |
-          echo "Running smoke test..."
           curl --retry 5 --retry-delay 5 --retry-max-time 60 http://localhost:80 || exit 1
           echo "Smoke test passed!"
-
       - name: Tear down services
         run: |
           docker-compose -f docker-compose.yml down --volumes 
@@ -133,38 +118,31 @@ jobs:
   docker-push:
     runs-on: ubuntu-latest
     needs: smoke-test
-    # environment: production  # Commented out temporarily to avoid approval issues
     steps:
       - name: Debug Event
         run: |
-          echo "Running docker-push for event: ${{ github.event_name }}"
+          echo "Event: ${{ github.event_name }}"
           echo "Ref: ${{ github.ref }}"
       - name: Checkout code
         uses: actions/checkout@v3
-
       - name: Set short SHA
         id: set_sha
         run: echo "sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-
       - name: Download Docker Artifacts
         uses: actions/download-artifact@v4
         with:
           name: docker-images
-
       - name: Load Docker Images
         run: |
           docker load -i noteapp-nginx.tar
           docker load -i noteapp-backend.tar
-
       - name: Retag Docker Images with SHA
         run: |
           GIT_SHA=${{ steps.set_sha.outputs.sha }}
           docker tag noteapp-nginx:latest ${{ secrets.DOCKER_USERNAME }}/noteapp-nginx:$GIT_SHA
           docker tag noteapp-backend:latest ${{ secrets.DOCKER_USERNAME }}/noteapp-backend:$GIT_SHA
-
       - name: Login to DockerHub
         run: echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-
       - name: Push Docker Images
         run: |
           GIT_SHA=${{ steps.set_sha.outputs.sha }}
@@ -178,31 +156,28 @@ jobs:
     steps:
       - name: Debug Event
         run: |
-          echo "Running update-kustomization for event: ${{ github.event_name }}"
+          echo "Event: ${{ github.event_name }}"
           echo "Ref: ${{ github.ref }}"
+          echo "Condition met: push to main"
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.GIT_TOKEN }}
-
       - name: Set short SHA
         id: set_sha
         run: echo "sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-
       - name: Install yq
         run: |
           sudo apt-get update
           sudo apt-get install -y wget
           wget https://github.com/mikefarah/yq/releases/download/v4.40.5/yq_linux_amd64 -O /usr/local/bin/yq
           chmod +x /usr/local/bin/yq
-
       - name: Update base/kustomization.yaml with new image tags
         run: |
           cd noteapp-kustomize/base
           GIT_SHA=${{ steps.set_sha.outputs.sha }}
           yq eval ".images[0].newTag = \"$GIT_SHA\"" -i kustomization.yaml
           yq eval ".images[1].newTag = \"$GIT_SHA\"" -i kustomization.yaml
-
       - name: Commit and push changes
         run: |
           git config user.name "omkar-shelke25"
@@ -213,56 +188,47 @@ jobs:
 
   django-note-app-staging-deploy:
     runs-on: ubuntu-latest
-    needs: [docker-build, docker-push, update-kustomization]
+    needs: [docker-push, update-kustomization]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: staging
     steps:
       - name: Debug Event
         run: |
-          echo "Running staging-deploy for event: ${{ github.event_name }}"
+          echo "Event: ${{ github.event_name }}"
           echo "Ref: ${{ github.ref }}"
+          echo "Condition met: push to main"
       - name: Checkout code
         uses: actions/checkout@v3
-
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'latest'
-
       - name: Configure Kubeconfig
         run: |
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
           kubectl config use-context django-note-app-context
-
       - name: Deploy ArgoCD Application for Staging
         run: |
           kubectl apply -f argocd/app-staging.yaml -n argocd
 
   django-note-app-production-deploy:
     runs-on: ubuntu-latest
-    needs: [docker-build, docker-push]  # Removed update-kustomization dependency
+    needs: [docker-push, update-kustomization, django-note-app-staging-deploy]
     if: github.event_name == 'workflow_dispatch'
-    environment: production  # Commented out temporarily to avoid approval issues
+    environment: production
     steps:
-      - name: Debug Event
-        run: |
-          echo "Running production-deploy for event: ${{ github.event_name }}"
-          echo "Ref: ${{ github.ref }}"
       - name: Checkout code
         uses: actions/checkout@v3
-
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'latest'
-
       - name: Configure Kubeconfig
         run: |
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
           kubectl config use-context django-note-app-context
-
       - name: Deploy ArgoCD Application for Production
         run: |
           kubectl apply -f argocd/app-production.yaml -n argocd
