@@ -9,8 +9,7 @@ spec:
     - protocol: TCP
       port: 80      # External port
       targetPort: 80  # Pod port
-      nodePort: 30012
-  type: NodePort  # Creates a cloud load balancer (e.g., AWS ELB)
+  type: LoadBalancer  # Creates a cloud load balancer (e.g., AWS ELB)
   # Alternative: Uncomment below for NodePort instead of LoadBalancer
   # type: NodePort
   # ports:
