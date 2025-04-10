@@ -1,83 +1,152 @@
-# Jenkins CI Pipeline for Django App
+# 🚀 Django Note App Deploy Using GitOps
 
-This project demonstrates the use of Jenkins for Continuous Integration (CI) with Docker for a Django application. The pipeline automates the process of building, testing, and deploying a Dockerized Django app.
+This project demonstrates how to deploy a Django-based Notes application using **GitOps principles**. It leverages **ArgoCD** for continuous deployment, **Kustomize** for Kubernetes manifest management, and **Amazon EKS** as the deployment environment. The entire CI/CD process is automated using **GitHub Actions**.
 
-## Table of Contents
-1. [Overview](#overview)
-2. [Jenkins Pipeline](#jenkins-pipeline)
-3. [Dockerfile](#dockerfile)
-4. [Docker Compose](#docker-compose)
-5. [Setup Instructions](#setup-instructions)
-6. [License](#license)
+---
 
-## Overview
+## ✅ Prerequisites
 
-This project is set up with Jenkins to automate the process of building and deploying a Django application inside a Docker container. The pipeline is configured to run in the following stages:
+Ensure the following tools are installed before running the project locally or deploying to the cloud:
 
-1. **Checkout the Code**: The code is pulled from a GitHub repository.
-2. **Testing**: Custom tests or scripts are executed.
-3. **Build the Code**: Docker image is built using the `Dockerfile`.
-4. **Store Image in Artifactory**: The built image is pushed to an image repository (Artifactory).
-5. **Deploy the Docker Image**: The image is deployed using Docker Compose.
+- **Python** & **Django**
+- **Nginx** (reverse proxy)
+- **MySQL** (database)
+- **Docker** & **Docker Compose**
+- **kubectl**
+- **Amazon EKS**
+- **ArgoCD**
+- **GitHub Actions**
 
-## Jenkins Pipeline
+---
 
-The Jenkins pipeline is defined in a `Jenkinsfile` and contains the following stages:
+## 📁 Project Structure
 
-- **Checkout the Code**: This stage checks out the code from the GitHub repository (`https://github.com/omkar-shelke25/Django-App-Pipeline-Jenkins`) on the `main` branch.
-  
-- **Testing**: A testing script is executed. You can customize the `hello()` function to run any necessary tests for your application.
+```
+├── Dockerfile
+├── docker-compose.yml
+├── nginx/
+├── noteapp-kustomize/
+├── argocd/
+├── requirements.txt
+└── .github/workflows/noteapp-gitops-pipelines.yml
+```
 
-- **Build the Code**: This stage checks for the presence of a `Dockerfile` and builds the Docker image named `note-app`.
+- `Dockerfile`: Django backend image
+- `nginx/`: Nginx configuration and Dockerfile
+- `noteapp-kustomize/`: Kustomize base and overlays for staging/production
+- `argocd/`: ArgoCD application manifests
+- `.github/workflows/`: GitHub Actions CI/CD definitions
 
-- **Store Image in Artifactory**: Once the image is built, it is pushed to Artifactory with the tag `latest`.
+---
 
-- **Deploy the Docker Image**: The pipeline checks for the presence of a `docker-compose.yml` file and deploys the Docker image using Docker Compose.
+## ⚙️ CI/CD Pipeline Overview
 
-## Dockerfile
+### 1. **Docker Build**
+- **Triggers**: Push to `main`, `feature/**`, PR merges
+- **Artifacts**: `noteapp-backend.tar`, `noteapp-nginx.tar`
 
-The `Dockerfile` is essential for building the Docker image. It contains the instructions on how to create the Docker image, including the base image, dependencies, and application setup. The `Dockerfile` is used in the pipeline's **Build the Code** stage to build the image.
+---
 
-### Importance of Dockerfile:
-- It defines the environment for the Django application.
-- It ensures consistency across different environments by using the same Docker image for development, testing, and production.
-- It automates the process of setting up dependencies, installing packages, and running the application inside a container.
+### 2. **Smoke Test**
 
-## Docker Compose
+Runs local test environment using Docker Compose.
 
-The `docker-compose.yml` file is used to define and run multi-container Docker applications. In this project, it is used to configure and deploy the Django app along with any other necessary services, such as databases or caches.
+```
+MySQL is healthy!
+Django is healthy!
+Smoke test passed!
+```
 
-### Importance of Docker Compose:
-- It allows you to define multiple services (e.g., Django app, database) in a single configuration file.
-- It simplifies the process of starting, stopping, and managing containers by using a single command (`docker-compose up`).
-- It provides an easy way to manage application dependencies and configurations across different environments.
+---
 
-## Setup Instructions
+### 3. **Docker Push**
 
-### Prerequisites
-- Jenkins installed and configured.
-- Docker installed and running.
-- Docker Compose installed.
-- GitHub repository containing the Django app.
+Pushes Docker images to DockerHub with tags like:  
+`username/noteapp-backend:<short_sha>`
 
-### Steps
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/omkar-shelke25/Django-App-Pipeline-Jenkins.git
-   ```
+---
 
-2. Create a Jenkins job and configure it to use the `Jenkinsfile` in the repository.
+### 4. **Update Kustomization**
 
-3. Ensure the following files are present in the root directory of the project:
-   - `Dockerfile`
-   - `docker-compose.yml`
+Updates image tags in `noteapp-kustomize/base/kustomization.yaml` and commits the changes.
 
-4. Configure the necessary credentials for Docker and Artifactory in Jenkins.
+```bash
+Updated image tags to abc1234 in kustomization.yaml
+```
 
-5. Run the Jenkins pipeline and monitor the stages for successful execution.
+---
 
-## License
+### 5. **Staging Deployment** (Auto)
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Applies `app-staging.yaml` to ArgoCD.  
+⬇️ *Staging Deployment CLI Output*  
+![Staging CLI Output](https://github.com/user-attachments/assets/81b02c05-0316-49c4-aa42-26c0315f092c)
+
+---
+
+### 6. **Production Deployment** (Manual via `workflow_dispatch`)
+
+Applies `app-production.yaml` to ArgoCD.
+
+⬇️ *ArgoCD Production View*  
+![ArgoCD Production](https://github.com/user-attachments/assets/383e09ea-0830-4364-a9bb-5e20fc0a352a)
+
+⬇️ *ArgoCD Staging View*  
+![ArgoCD Staging](https://github.com/user-attachments/assets/b8cdd90e-619b-46fa-9881-1b83b689c6c9)
+
+---
+
+## 🎯 Final Output
+
+The application is successfully deployed and accessible.
+
+⬇️ *Final UI Output*  
+![Final Output](https://github.com/user-attachments/assets/d5b40640-e427-4e38-b26e-dcf231b05590)
+
+---
+
+## 🧪 How to Run Locally
+
+```bash
+git clone <repository-url>
+cd <repository-directory>
+```
+
+Create `.env` file:
+```bash
+echo "DATABASE_HOST=db" > .env
+echo "DATABASE_NAME=test_db" >> .env
+echo "DATABASE_USER=root" >> .env
+echo "DATABASE_PASSWORD=root" >> .env
+echo "DATABASE_PORT=3306" >> .env
+```
+
+Start services:
+```bash
+docker-compose -f docker-compose.yml up -d
+```
+
+App will be available at: `http://localhost:80`
+
+To stop and clean up:
+```bash
+docker-compose -f docker-compose.yml down --volumes
+```
+
+---
+
+## 📝 Notes
+
+- **Staging** deploys automatically on `main` updates.
+- **Production** deploys manually via GitHub Actions.
+- GitHub Actions pipeline **ignores** changes to:
+  - `README.md`
+  - `kustomization.yaml`
+  - `k8s-manifests-for-github-action/README.md`
+- Required GitHub secrets:
+  - `DOCKER_USERNAME`
+  - `DOCKER_PASS`
+  - `GIT_TOKEN`
+  - `KUBECONFIG`
 
 ---
