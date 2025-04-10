@@ -63,7 +63,7 @@ jobs:
 
   smoke-test:
     runs-on: ubuntu-latest
-    needs: docker-build  # Updated from docker-build-and-run
+    needs: docker-build
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -94,7 +94,7 @@ jobs:
 
       - name: Start services with docker-compose
         run: |
-          docker-compose -f docker-compose.yaml up -d
+          docker-compose -f docker-compose.yml up -d  
 
       - name: Wait for services to be healthy
         run: |
@@ -120,7 +120,7 @@ jobs:
 
       - name: Tear down services
         run: |
-          docker-compose -f docker-compose.yaml down --volumes
+          docker-compose -f docker-compose.yml down --volumes 
 
   docker-push:
     runs-on: ubuntu-latest
@@ -197,7 +197,7 @@ jobs:
 
   django-note-app-staging-deploy:
     runs-on: ubuntu-latest
-    needs: [docker-build, docker-push, update-kustomization]  # Updated from docker-build-and-run
+    needs: [docker-build, docker-push, update-kustomization]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: staging
     steps:
@@ -221,7 +221,7 @@ jobs:
 
   django-note-app-production-deploy:
     runs-on: ubuntu-latest
-    needs: [docker-build, docker-push, update-kustomization]  # Updated from docker-build-and-run
+    needs: [docker-build, docker-push, update-kustomization]
     if: github.event_name == 'workflow_dispatch'
     environment: production
     steps:
