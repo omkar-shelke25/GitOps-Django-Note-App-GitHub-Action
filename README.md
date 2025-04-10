@@ -50,6 +50,8 @@ This project demonstrates a complete **GitOps-based** deployment workflow for a 
 
 ### 🧱 Workflow Job Summary
 
+![image](https://github.com/user-attachments/assets/67c47143-1639-4551-8325-9bd03afbff3c)
+
 #### 1️⃣ `docker-build`
 - Builds `noteapp-backend` and `noteapp-nginx` Docker images
 - Saves them as artifacts
@@ -171,4 +173,4 @@ graph TD;
 
 ---
 
-Would you like this exported as a Markdown file (`README.md`) or in any other format (PDF, HTML)?
+
