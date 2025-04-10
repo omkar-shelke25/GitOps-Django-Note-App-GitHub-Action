@@ -17,12 +17,6 @@ on:
       - 'noteapp-kustomize/base/kustomization.yaml'
       - 'README.md'
       - 'k8s-manifests-for-github-action/README.md'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Docker Image Tag (SHA)'
-        required: true
-        default: 'latest'
 
 jobs:
   docker-build:
@@ -220,14 +214,17 @@ jobs:
   django-note-app-production-deploy:
     runs-on: ubuntu-latest
     needs: [docker-push, update-kustomization, django-note-app-staging-deploy]
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: production
     steps:
-      - name: Debug Input
+      - name: Debug Event
         run: |
-          echo "Deploying production with image tag: ${{ github.event.inputs.tag }}"
+          echo "Auto deploying production on push to main"
       - name: Checkout code
         uses: actions/checkout@v3
+      - name: Set short SHA
+        id: set_sha
+        run: echo "sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
         with:
