@@ -17,7 +17,12 @@ on:
       - 'noteapp-kustomize/base/kustomization.yaml'
       - 'README.md'
       - 'k8s-manifests-for-github-action/README.md'
-  workflow_dispatch:  # For manual production deploy
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker Image Tag (SHA)'
+        required: true
+        default: 'latest'
 
 jobs:
   docker-build:
@@ -218,6 +223,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     environment: production
     steps:
+      - name: Debug Input
+        run: |
+          echo "Deploying production with image tag: ${{ github.event.inputs.tag }}"
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Set up kubectl
